@@ -49,7 +49,7 @@ def main():
                 if asteroid.collides(shot):
                     shot.kill()
                     asteroid.split()
-        screen.fill((0, 0, 0))
+        screen.fill("black")
         for obj in drawable:
             obj.draw(screen)
         pygame.display.flip()
