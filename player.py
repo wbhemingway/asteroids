@@ -1,5 +1,4 @@
 import pygame
-from circleshape import CircleShape
 from constants import (
     PLAYER_RADIUS,
     PLAYER_SHOOT_COOLDOWN,
@@ -10,9 +9,15 @@ from constants import (
 from shot import Shot
 
 
-class Player(CircleShape):
+class Player(pygame.sprite.Sprite):
     def __init__(self, x, y):
-        super().__init__(x, y, PLAYER_RADIUS)
+        if hasattr(self, "containers"):
+            super().__init__(self.containers)
+        else:
+            super().__init__()
+        self.position = pygame.Vector2(x, y)
+        self.velocity = pygame.Vector2(0, 0)
+        self.radius = PLAYER_RADIUS
         self.rotation = 0
         self.shot_timer = 0
 
@@ -58,3 +63,38 @@ class Player(CircleShape):
             new_shot.velocity = (
                 pygame.Vector2(0, 1).rotate(self.rotation) * PLAYER_SHOOT_SPEED
             )
+
+    def collides(self, other):
+        # http://www.jeffreythompson.org/collision-detection/tri-circle.php
+        a, b, c = self.triangle()
+
+        if self.is_point_in_triangle(other.position, a, b, c):
+            return True
+
+        for p1, p2 in [(a, b), (b, c), (c, a)]:
+            closest_point = self.closest_point_on_segment(other.position, p1, p2)
+            if other.position.distance_to(closest_point) <= other.radius:
+                return True
+        return False
+
+    def is_point_in_triangle(self, pt, v1, v2, v3):
+        # https://stackoverflow.com/a/13305589/1792519
+        def sign(p1, p2, p3):
+            return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y)
+
+        d1 = sign(pt, v1, v2)
+        d2 = sign(pt, v2, v3)
+        d3 = sign(pt, v3, v1)
+        has_neg = (d1 < 0) or (d2 < 0) or (d3 < 0)
+        has_pos = (d1 > 0) or (d2 > 0) or (d3 > 0)
+        return not (has_neg and has_pos)
+
+    def closest_point_on_segment(self, p, a, b):
+        # https://stackoverflow.com/a/1501725/1792519
+        ap = p - a
+        ab = b - a
+        ab2 = ab.x * ab.x + ab.y * ab.y
+        ap_dot_ab = ap.x * ab.x + ap.y * ab.y
+        t = ap_dot_ab / ab2
+        t = max(0, min(1, t))
+        return a + ab * t
